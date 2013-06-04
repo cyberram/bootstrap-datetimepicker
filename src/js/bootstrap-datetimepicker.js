@@ -261,8 +261,15 @@
 
     place: function(){
       var position = 'absolute';
-      var offset = this.component ? this.component.offset() : this.$element.offset();
-      this.width = this.component ? this.component.outerWidth() : this.$element.outerWidth();
+      var offset = this.component.offset();
+      if(typeof(offset) == 'undefined')
+        offset = this.$element.offset();
+      this.width = this.component.outerWidth();
+      if(this.width == null)
+        this.width = this.$element.outerWidth();
+      this.height = this.component.outerHeight();
+      if(this.height == null)
+        this.height = this.$element.outerHeight();
       offset.top = offset.top + this.height;
 
       var $window = $(window);
@@ -737,6 +744,10 @@
       e.preventDefault();
     },
 
+    dateWithinRange: function(date){
+      return date >= this.startDate && date <= this.endDate;
+    },
+
     // part of the following code was taken from
     // http://cloud.github.com/downloads/digitalBush/jquery.maskedinput/jquery.maskedinput-1.3.js
     keydown: function(e) {
@@ -747,6 +758,83 @@
         setTimeout(function() {
           self._resetMaskPos(input);
         });
+      }
+
+
+      if (this.widget.is(':not(:visible)')){
+        if (e.keyCode == 40) // show widget if the on down
+          this.show();
+        return;
+      }
+      var dateChanged = false,
+        dir, day, month,
+        newDate, newViewDate;
+      switch(e.keyCode){
+        case 27: // escape
+          this.hide();
+          e.preventDefault();
+          break;
+        case 37: // left
+        case 39: // right
+          if (!this.options.keyboardNavigation) break;
+          dir = e.keyCode == 37 ? -1 : 1;
+          if (e.ctrlKey){
+            newDate = this.moveYear(this._date, dir);
+            newViewDate = this.moveYear(this.viewDate, dir);
+          } else if (e.shiftKey){
+            newDate = this.moveMonth(this._date, dir);
+            newViewDate = this.moveMonth(this.viewDate, dir);
+          } else {
+            newDate = new Date(this._date);
+            newDate.setUTCDate(this._date.getUTCDate() + dir);
+            newViewDate = new Date(this.viewDate);
+            newViewDate.setUTCDate(this.viewDate.getUTCDate() + dir);
+          }
+          if (this.dateWithinRange(newDate)){
+            this._date = newDate;
+            this.viewDate = newViewDate;
+            this.setValue();
+            this.update();
+            e.preventDefault();
+            dateChanged = true;
+          }
+          break;
+        case 38: // up
+        case 40: // down
+          if (!this.options.keyboardNavigation) break;
+          dir = e.keyCode == 38 ? -1 : 1;
+          if (e.ctrlKey){
+            newDate = this.moveYear(this._date, dir);
+            newViewDate = this.moveYear(this.viewDate, dir);
+          } else if (e.shiftKey){
+            newDate = this.moveMonth(this._date, dir);
+            newViewDate = this.moveMonth(this.viewDate, dir);
+          } else {
+            newDate = new Date(this._date);
+            newDate.setUTCDate(this._date.getUTCDate() + dir * 7);
+            newViewDate = new Date(this.viewDate);
+            newViewDate.setUTCDate(this.viewDate.getUTCDate() + dir * 7);
+          }
+          if (this.dateWithinRange(newDate)){
+            this._date = newDate;
+            this.viewDate = newViewDate;
+            this.setValue();
+            this.update();
+            e.preventDefault();
+            dateChanged = true;
+          }
+          break;
+        case 13: // enter
+          this.hide();
+          this.setValue(this._date);
+          e.preventDefault();
+          break;
+        case 9: // tab
+          this.hide();
+          break;
+      }
+      if (dateChanged){
+        this.notifyChange();
       }
     },
 
@@ -981,7 +1069,7 @@
           'focus': $.proxy(this.show, this),
           'change': $.proxy(this.change, this)
         });
-        if (this.options.maskInput) {
+        if (this.options.maskInput || this.options.keyboardNavigation) {
           this.$element.on({
             'keydown': $.proxy(this.keydown, this),
             'keypress': $.proxy(this.keypress, this)
@@ -991,7 +1079,7 @@
         this.$element.on({
           'change': $.proxy(this.change, this)
         }, 'input');
-        if (this.options.maskInput) {
+        if (this.options.maskInput || this.options.keyboardNavigation) {
           this.$element.on({
             'keydown': $.proxy(this.keydown, this),
             'keypress': $.proxy(this.keypress, this)
@@ -1095,7 +1183,8 @@
     pickSeconds: true,
     startDate: -Infinity,
     endDate: Infinity,
-    collapse: true
+    collapse: true,
+    keyboardNavigation: true
   };
   $.fn.datetimepicker.Constructor = DateTimePicker;
   var dpgId = 0;
